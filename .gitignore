@@ -39,3 +39,11 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# apk files
+*.apk
+
+# firebase config
+firebaseConfig.js
+# Subabase config
+src/supabaseConfig.js

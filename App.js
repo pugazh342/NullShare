@@ -1,20 +1,27 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
+import UploadScreen from './src/screens/UploadScreen';
+import DownloadScreen from './src/screens/DownloadScreen';
 
 export default function App() {
+  // Simple state to toggle screens
+  const [mode, setMode] = useState('upload'); // 'upload' or 'download'
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      {mode === 'upload' ? (
+        <UploadScreen onSwitchMode={() => setMode('download')} />
+      ) : (
+        <DownloadScreen onSwitchMode={() => setMode('upload')} />
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#f0f2f5',
   },
 });
