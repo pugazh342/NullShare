@@ -34,6 +34,62 @@ All files are **encrypted locally on the user’s device before upload** and can
   Real-time upload progress, native share sheet integration, and clean UX.
 
 ---
+## ✨ Architecture Diagram 
+```mermaid
+graph TD
+    %% Styling
+    classDef client fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef cloud fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef security fill:#ffebee,stroke:#b71c1c,stroke-width:2px,stroke-dasharray: 5 5;
+
+    subgraph User_Device ["📱 Sender's Device (Trusted Zone)"]
+        direction TB
+        File[📄 Original File]
+        KeyGen[🔑 Key Generator]
+        EncryptEngine[⚙️ AES-256 Engine]
+        LinkGen[🔗 Link Builder]
+        
+        File --> EncryptEngine
+        KeyGen -->|Generates Key + IV| EncryptEngine
+        EncryptEngine -->|1. Encrypted Blob| BlobOutput[🔒 Encrypted Data]
+        EncryptEngine -->|2. Public IV| MetaOutput[📝 Metadata]
+        KeyGen -->|3. Secret Key| LinkGen
+    end
+
+    subgraph Internet ["🌐 The Internet / Share Channel"]
+        ShareLink[("📲 WhatsApp / Telegram / Email")]
+        LinkGen -->|nullshare://d/UUID#key=SECRET| ShareLink
+    end
+
+    subgraph Cloud_Backend ["☁️ Cloud Infrastructure (Untrusted Zone)"]
+        direction TB
+        
+        subgraph Storage_Layer
+            Supabase[("📦 Supabase Storage")]
+        end
+        
+        subgraph Database_Layer
+            Firebase[("🔥 Firebase Firestore")]
+        end
+
+        BlobOutput -->|Uploads Blob| Supabase
+        MetaOutput -->|Stores IV, Expiry, URL| Firebase
+    end
+
+    subgraph Receiver_Device ["📱 Receiver's Device"]
+        ReceiverApp[NullShare App]
+        ShareLink -.->|User clicks Link| ReceiverApp
+        Supabase -.->|Downloads Blob| ReceiverApp
+        Firebase -.->|Reads IV & Metadata| ReceiverApp
+        ReceiverApp -->|Decrypts locally| DecryptedFile[📄 Final File]
+    end
+
+    %% Apply Styles
+    class File,KeyGen,EncryptEngine,LinkGen,ReceiverApp client;
+    class Supabase,Firebase cloud;
+    class ShareLink security;
+```
+---
 
 ## 🛠️ Tech Stack
 
@@ -44,6 +100,56 @@ All files are **encrypted locally on the user’s device before upload** and can
 - **Cryptography:** `crypto-js` (AES-256), `expo-crypto`
 - **File Handling:** `expo-file-system`
 
+---
+## End-to-End Workflow (Sequence Diagram)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as 👤 Sender
+    participant App as 📱 NullShare App
+    participant SB as 📦 Supabase (Storage)
+    participant FS as 🔥 Firestore (DB)
+    participant R as 👤 Receiver
+
+    Note over S, App: PHASE 1: UPLOAD
+    S->>App: Picks File (e.g., photo.jpg)
+    App->>App: Generate UUID + 256-bit Key + IV
+    App->>App: Read File & Encrypt (AES-256)
+    
+    App->>SB: Upload Encrypted Blob (.enc)
+    activate SB
+    SB-->>App: Return Public URL
+    deactivate SB
+    
+    App->>FS: Save Metadata (IV, URL, Expiry, Counts)
+    activate FS
+    FS-->>App: Success Confirmation
+    deactivate FS
+    
+    App->>App: Delete Original File (Auto-Wipe)
+    App->>S: Display "Share Link" (#key=SECRET)
+
+    Note over S, R: PHASE 2: SHARING
+    S->>R: Sends Link via WhatsApp/Telegram
+    R->>App: Clicks Link (Opens Receiver Mode)
+
+    Note over App, R: PHASE 3: DOWNLOAD
+    App->>App: Parse UUID & Key from Link
+    
+    App->>FS: Fetch Metadata (Check Expiry/Limits)
+    activate FS
+    FS-->>App: Return IV & Supabase URL
+    deactivate FS
+    
+    App->>SB: Download Encrypted Blob
+    activate SB
+    SB-->>App: Return Encrypted Data
+    deactivate SB
+    
+    App->>App: Decrypt (Blob + Key + IV)
+    App->>FS: Increment Download Count (+1)
+    App->>R: Save Decrypted File to Gallery
+```
 ---
 
 ## 🚀 Installation & Setup
@@ -181,3 +287,4 @@ See the `LICENSE` file for more details.
 ## ❤️ Author
 
 Built with passion by **Pugazhmani. K**
+
